@@ -207,10 +207,10 @@ typedef enum _RemindMessageType {
         __weak typeof(self) weakSelf = self;
         [self.espFBYBleHelper connectBle:device callBackBlock:^(NSString * _Nonnull msg, EspDevice * _Nonnull encryptionSucDevice) {
             NSArray *msgArr = [msg componentsSeparatedByString:@":"];
-            if ([msgArr[2] intValue] == FoundCharacteristic) {
+            if (msgArr.count > 2 && [msgArr[2] intValue] == FoundCharacteristic) {
                 NSLog(@"连接过程返回数据 %@",msg);
-                weakSelf.device.isConnected = YES;
                 weakSelf.device = encryptionSucDevice;
+                weakSelf.device.isConnected = YES;
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [weakSelf.espBleDeviceTableView reloadData];
                 });
@@ -333,11 +333,13 @@ typedef enum _RemindMessageType {
 {
     UInt16 crc = 0;
     int sequence = 0;
-    Byte buf[BLE_SEND_MAX_LEN];
+    NSUInteger mtu = [self.device.currPeripheral maximumWriteValueLengthForType:CBCharacteristicWriteWithoutResponse];
+    NSLog(@"mtu: %lu", (unsigned long)mtu);
+    Byte buf[mtu-5];
     NSInputStream *stream = [[NSInputStream alloc] initWithData:sector];
     [stream open];
     while (stream.hasBytesAvailable) {
-        NSUInteger read = [stream read:buf maxLength:BLE_SEND_MAX_LEN];
+        NSUInteger read = [stream read:buf maxLength:mtu-5];
         if (!stream.hasBytesAvailable) {
             crc = [EspCRC16 crc:sector];
             sequence = -1;
